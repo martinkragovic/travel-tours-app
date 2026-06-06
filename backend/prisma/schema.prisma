@@ -1,0 +1,261 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  //url      = env("DATABASE_URL")
+}
+
+enum UserRoleCode {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum BookingStatus {
+  NEW
+  IN_PROGRESS
+  CONFIRMED
+  CANCELLED
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+  EXTREME
+}
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  name        String
+  code        UserRoleCode @unique
+  description String?
+
+  users       User[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("roles")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  phone        String?
+  passwordHash String
+  roleId       Int
+
+  role         Role      @relation(fields: [roleId], references: [id])
+
+  bookings     Booking[]
+  reviews      Review[]
+  favorites    FavoriteTour[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Country {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+
+  tours     Tour[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("countries")
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  tours       TourCategory[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Tour {
+  id                 Int             @id @default(autoincrement())
+  title              String
+  slug               String          @unique
+
+  shortDescription   String
+  fullDescription    String
+
+  countryId          Int
+  country            Country         @relation(fields: [countryId], references: [id])
+
+  durationDays       Int
+  minPrice           Int
+  maxParticipants    Int
+
+  difficultyLevel    DifficultyLevel @default(MEDIUM)
+
+  whatIncluded       String?
+  requirements       String?
+  cancellationPolicy String?
+
+  averageRating      Float           @default(0)
+  reviewsCount       Int             @default(0)
+
+  isPublished        Boolean         @default(false)
+  sortOrder          Int             @default(0)
+
+  categories         TourCategory[]
+  dates              TourDate[]
+  images             TourImage[]
+  bookings           Booking[]
+  reviews            Review[]
+  favorites          FavoriteTour[]
+
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@map("tours")
+}
+
+model TourCategory {
+  id         Int      @id @default(autoincrement())
+
+  tourId     Int
+  tour       Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([tourId, categoryId])
+  @@map("tour_categories")
+}
+
+model TourDate {
+  id             Int       @id @default(autoincrement())
+
+  tourId          Int
+  tour            Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  startDate       DateTime
+  endDate         DateTime
+
+  price           Int?
+  totalSeats      Int
+  availableSeats  Int
+
+  isAvailable     Boolean   @default(true)
+
+  bookings        Booking[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("tour_dates")
+}
+
+model TourImage {
+  id          Int      @id @default(autoincrement())
+
+  tourId      Int
+  tour        Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  filePath    String
+  altText     String?
+  isMain      Boolean  @default(false)
+  sortOrder   Int      @default(0)
+
+  uploadedAt  DateTime @default(now())
+
+  @@map("tour_images")
+}
+
+model Booking {
+  id             Int           @id @default(autoincrement())
+
+  userId          Int?
+  user            User?         @relation(fields: [userId], references: [id])
+
+  tourId          Int
+  tour            Tour          @relation(fields: [tourId], references: [id])
+
+  tourDateId      Int
+  tourDate        TourDate      @relation(fields: [tourDateId], references: [id])
+
+  customerName    String
+  customerPhone   String?
+  customerEmail   String?
+
+  participants    Int
+  totalPrice      Int
+
+  customerComment String?
+  adminComment    String?
+
+  status          BookingStatus @default(NEW)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("bookings")
+}
+
+model Review {
+  id        Int          @id @default(autoincrement())
+
+  tourId    Int
+  tour      Tour         @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  userId    Int?
+  user      User?        @relation(fields: [userId], references: [id])
+
+  authorName String
+  rating     Int
+  text       String
+
+  status     ReviewStatus @default(PENDING)
+
+  createdAt  DateTime     @default(now())
+
+  @@map("reviews")
+}
+
+model FavoriteTour {
+  id        Int      @id @default(autoincrement())
+
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tourId    Int
+  tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tourId])
+  @@map("favorite_tours")
+}
