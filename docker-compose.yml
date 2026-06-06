@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:15
+    container_name: travel_tours_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: travel_tours_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - travel_tours_pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: travel_tours_backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/travel_tours_db?schema=public
+      JWT_SECRET: super_secret_jwt_key_change_me
+      JWT_EXPIRES_IN: 7d
+      PORT: 3000
+      UPLOADS_DIR: uploads
+    ports:
+      - "3000:3000"
+    volumes:
+      - travel_tours_uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000
+        INTERNAL_API_URL: http://backend:3000
+    container_name: travel_tours_frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+      INTERNAL_API_URL: http://backend:3000
+    ports:
+      - "3001:3001"
+
+volumes:
+  travel_tours_pgdata:
+  travel_tours_uploads:
